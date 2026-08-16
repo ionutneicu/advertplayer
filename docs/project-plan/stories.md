@@ -23,6 +23,25 @@ Requirement identifiers refer to
 | S-07 | Python plugin boilerplate | S-04 | not started |
 | S-08 | Reference plugins: analog clock and marquee | S-06, S-07 | not started |
 
+#### Importing into GitHub
+
+`tools/github/import-stories.py` turns each story into an issue, with its
+acceptance criteria as a task list so criteria can be ticked as they are met.
+
+```bash
+tools/github/import-stories.py
+```
+
+A dry run by default. To create them, with `gh` installed and authenticated:
+
+```bash
+tools/github/import-stories.py --create
+```
+
+**The markdown stays the source of record.** When a story itself changes, edit
+this document — the issue is a view of it, not a second copy to keep in sync.
+Progress belongs on the issue; definition belongs here.
+
 ---
 
 #### S-01 — Requirements and architecture baseline

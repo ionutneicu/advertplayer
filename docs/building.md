@@ -420,6 +420,60 @@ force it:
 ./build-pi/refapp --backend dispmanx --frames 300
 ```
 
+#### 5b. Cross-compiling for the Raspberry Pi
+
+Building on the device is the reference path (§5a), but slow to iterate on and
+impossible without hardware. The cross image compiles the DispmanX backend on
+an x86-64 machine.
+
+**What it proves, and what it does not.** It proves the backend **compiles and
+links** against the real Broadcom headers and libraries — worth having, because
+nothing else in CI touches that code at all. It proves nothing **runs**: the
+binary is armhf, it is never executed here, and a DispmanX surface exists only
+on the device. Acceptance criterion 1 of story S-02 still needs a Pi.
+
+##### Build the cross image
+
+```bash
+docker build -f docker/rpi-cross.Dockerfile -t opengl-refapp-rpi docker/
+```
+
+It installs `crossbuild-essential-armhf` and fetches the Broadcom userland from
+the Raspberry Pi firmware repository — a shallow, blobless, sparse checkout of
+`hardfp/opt/vc` alone, since a full clone is gigabytes of firmware blobs and
+kernel images. Target is 32-bit armhf: the legacy graphics stack that provides
+DispmanX is a 32-bit userland.
+
+##### Cross-compile
+
+```bash
+docker/build-rpi.sh
+```
+
+Which is the toolchain file plus `ENABLE_DISPMANX=ON`:
+
+```bash
+cmake -S . -B build-rpi -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-rpi-armhf.cmake -DENABLE_DISPMANX=ON
+```
+
+The toolchain file sets `CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY`, so a stray
+x86-64 library cannot be picked up — without it the failure surfaces at link
+time as an architecture mismatch, which is a poor way to learn that `find_library`
+looked in the wrong place.
+
+##### Copying to the device
+
+```bash
+scp build-rpi/refapp pi@raspberrypi.local:
+```
+
+The Broadcom libraries are already on the device, in `/opt/vc/lib`. If the
+loader cannot find them:
+
+```bash
+export LD_LIBRARY_PATH=/opt/vc/lib
+```
+
 #### 6. Python module resolution
 
 `PythonInterpreter` prepends its `module_search_paths` to `sys.path`, so

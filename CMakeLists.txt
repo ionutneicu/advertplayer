@@ -60,13 +60,21 @@ target_compile_definitions(refapp_platform
   PUBLIC REFAPP_ENABLE_DISPMANX=$<BOOL:${ENABLE_DISPMANX}>)
 
 if(ENABLE_DISPMANX)
-  target_include_directories(refapp_platform PUBLIC ${BCM_HOST_INCLUDE_DIR})
+  target_include_directories(refapp_platform SYSTEM PUBLIC ${BCM_HOST_INCLUDE_DIR})
   target_link_libraries(refapp_platform PUBLIC ${BCM_HOST_LIBRARY})
 endif()
 
 # EGL and GLES2 are needed by every backend (FR-5, FR-10).
-find_library(EGL_LIBRARY NAMES EGL brcmEGL HINTS /opt/vc/lib)
-find_library(GLESV2_LIBRARY NAMES GLESv2 brcmGLESv2 HINTS /opt/vc/lib)
+#
+# The brcm* names come first deliberately. On the Pi legacy stack /opt/vc
+# ships both libEGL.so and libbrcmEGL.so with identical content, but a device
+# that also has Mesa installed may resolve the generic name to Mesa's
+# implementation at load time -- which would hand a Mesa context a DispmanX
+# window and fail in a way that looks like a driver bug. The brcm* names are
+# unambiguous. On a desktop neither exists, so the search falls through to the
+# generic names, which is what we want there.
+find_library(EGL_LIBRARY NAMES brcmEGL EGL HINTS /opt/vc/lib)
+find_library(GLESV2_LIBRARY NAMES brcmGLESv2 GLESv2 HINTS /opt/vc/lib)
 if(EGL_LIBRARY AND GLESV2_LIBRARY)
   target_link_libraries(refapp_platform PUBLIC ${EGL_LIBRARY} ${GLESV2_LIBRARY})
 else()
@@ -88,7 +96,20 @@ endif()
 # ---------------------------------------------------------------------------
 # The CPython embedding demo the project started from. Moves under the Python
 # plugin boilerplate in story S-07; kept building until then.
+#
+# Off by default when cross-compiling: the Raspberry Pi cross image has no
+# armhf Python, and the demo is not what a cross build is for. The renderer
+# itself has no Python dependency.
 # ---------------------------------------------------------------------------
+if(CMAKE_CROSSCOMPILING)
+  set(REFAPP_PYTHON_DEMO_DEFAULT OFF)
+else()
+  set(REFAPP_PYTHON_DEMO_DEFAULT ON)
+endif()
+option(BUILD_PYTHON_DEMO "Build the CPython embedding demo (legacy, see S-07)"
+       ${REFAPP_PYTHON_DEMO_DEFAULT})
+
+if(BUILD_PYTHON_DEMO)
 
 # "Development.Embed" is the component that ships libpython plus the headers
 # required to embed the interpreter in a host process. On Debian/Ubuntu it
@@ -127,8 +148,12 @@ endif()
 target_compile_definitions(python_host
   PRIVATE "REFAPP_SCRIPTS_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/scripts\"")
 
+endif()  # BUILD_PYTHON_DEMO
+
 enable_testing()
+if(BUILD_PYTHON_DEMO)
 add_test(NAME python_host_smoke COMMAND python_host)
 set_tests_properties(python_host_smoke PROPERTIES
   PASS_REGULAR_EXPRESSION
     "frame width : 2560|Done\\.|caught PythonError:")
+endif()
