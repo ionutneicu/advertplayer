@@ -338,6 +338,88 @@ refapp-docker cmake --build build-docker -j"$(nproc)"
 - **`--rm` is deliberate.** These are throwaway containers; all state that
   matters lives in the mounted working tree.
 
+#### 5a. Raspberry Pi — DispmanX
+
+The DispmanX backend (FR-126) **cannot be built in the container**. It needs
+the Broadcom userland — `bcm_host.h` and `libbcm_host` — which exists only on
+a Raspberry Pi running the legacy graphics stack (FR-127). Build on the device.
+
+> **Unverified.** These instructions are written from the source and from the
+> prior implementation's autoconf build. They have not yet been run on
+> hardware — that is story S-02, and this section is updated with what actually
+> happens.
+
+##### Prerequisites on the Pi
+
+The legacy graphics driver must be active. On Raspberry Pi OS this is the
+non-KMS driver; DispmanX was removed from the default stack at Bullseye, so
+which release and driver you use is part of what S-02 records (OP-22).
+
+```bash
+sudo apt install build-essential cmake libegl-dev libgles-dev
+```
+
+Confirm the Broadcom userland is present before configuring:
+
+```bash
+ls /opt/vc/include/bcm_host.h /opt/vc/lib/libbcm_host.so
+```
+
+Newer packaged layouts install these under the normal prefixes rather than
+`/opt/vc`; the build searches both.
+
+##### Configure and build
+
+```bash
+cmake -S . -B build-pi -DENABLE_DISPMANX=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
+```
+
+A successful configure names the library it found:
+
+```
+-- DispmanX backend: /opt/vc/lib/libbcm_host.so
+```
+
+```bash
+cmake --build build-pi -j"$(nproc)"
+```
+
+If the Broadcom userland is missing, configure **fails immediately** rather
+than producing undefined references at link time:
+
+```
+CMake Error: ENABLE_DISPMANX=ON but the Broadcom userland was not found.
+    bcm_host.h : BCM_HOST_INCLUDE_DIR-NOTFOUND
+    libbcm_host: BCM_HOST_LIBRARY-NOTFOUND
+```
+
+##### Run
+
+DispmanX composites a fullscreen layer and needs no display server, so run it
+from a console with no X or Wayland session:
+
+```bash
+./build-pi/refapp --frames 300
+```
+
+Expect a solid blue screen. The program prints the backend it chose, the
+surface size and the GL strings:
+
+```
+compiled backends: dispmanx
+backend    : dispmanx
+surface    : 1920x1080
+GL_VERSION : OpenGL ES 2.0
+```
+
+Backend selection is automatic (FR-7) — DispmanX is chosen when neither
+`WAYLAND_DISPLAY` nor `DISPLAY` is set, which is exactly the console case. To
+force it:
+
+```bash
+./build-pi/refapp --backend dispmanx --frames 300
+```
+
 #### 6. Python module resolution
 
 `PythonInterpreter` prepends its `module_search_paths` to `sys.path`, so

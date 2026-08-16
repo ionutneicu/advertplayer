@@ -15,7 +15,7 @@ Requirement identifiers refer to
 | # | Story | Depends on | Status |
 | - | ----- | ---------- | ------ |
 | S-01 | Requirements and architecture baseline | — | **done** |
-| S-02 | Raspberry Pi / DispmanX spike | S-01 | not started |
+| S-02 | Raspberry Pi / DispmanX spike | S-01 | **in progress** — 1 of 5 criteria met; 4 need hardware |
 | S-03 | Surface layer — EGL over X11 and Wayland | S-01 | not started |
 | S-04 | Plugin ABI: loader, conformance harness, native plugin | S-03 | not started |
 | S-05 | Resource manager and device assessment | S-04 | not started |
@@ -67,6 +67,20 @@ implementation, establish the build path, and get a frame onto a real Pi.
 | 3 | `ENABLE_DISPMANX=ON` fails at **configure** time with a clear message when Broadcom headers are absent, not at link time | Configure in the x86 container |
 | 4 | The Pi OS release and driver configuration used are recorded | `docs/building.md` names them |
 | 5 | A recommendation on keeping or dropping DispmanX is written, with the evidence behind it | OP-24 moves to resolved |
+
+**Progress**
+
+| # | State |
+| - | ----- |
+| 1 | Blocked — needs a Raspberry Pi |
+| 2 | Blocked — needs a Raspberry Pi |
+| 3 | **Met.** `-DENABLE_DISPMANX=ON` in the container fails at configure, exit 1, naming both missing paths |
+| 4 | Blocked — needs a Raspberry Pi |
+| 5 | Blocked — needs criteria 1, 2 and 4 |
+
+The port, the surface interface, the CMake detection and the build
+documentation are written. Everything that can be verified without the device
+has been; the rest is honestly outstanding.
 
 > **First among the implementation stories, deliberately.** It is the task most
 > likely to fail in a way that changes the plan, and R-4 notes that nothing in
