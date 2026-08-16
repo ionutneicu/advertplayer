@@ -338,6 +338,142 @@ refapp-docker cmake --build build-docker -j"$(nproc)"
 - **`--rm` is deliberate.** These are throwaway containers; all state that
   matters lives in the mounted working tree.
 
+#### 5a. Raspberry Pi — DispmanX
+
+The DispmanX backend (FR-126) **cannot be built in the container**. It needs
+the Broadcom userland — `bcm_host.h` and `libbcm_host` — which exists only on
+a Raspberry Pi running the legacy graphics stack (FR-127). Build on the device.
+
+> **Unverified.** These instructions are written from the source and from the
+> prior implementation's autoconf build. They have not yet been run on
+> hardware — that is story S-02, and this section is updated with what actually
+> happens.
+
+##### Prerequisites on the Pi
+
+The legacy graphics driver must be active. On Raspberry Pi OS this is the
+non-KMS driver; DispmanX was removed from the default stack at Bullseye, so
+which release and driver you use is part of what S-02 records (OP-22).
+
+```bash
+sudo apt install build-essential cmake libegl-dev libgles-dev
+```
+
+Confirm the Broadcom userland is present before configuring:
+
+```bash
+ls /opt/vc/include/bcm_host.h /opt/vc/lib/libbcm_host.so
+```
+
+Newer packaged layouts install these under the normal prefixes rather than
+`/opt/vc`; the build searches both.
+
+##### Configure and build
+
+```bash
+cmake -S . -B build-pi -DENABLE_DISPMANX=ON -DCMAKE_BUILD_TYPE=RelWithDebInfo
+```
+
+A successful configure names the library it found:
+
+```
+-- DispmanX backend: /opt/vc/lib/libbcm_host.so
+```
+
+```bash
+cmake --build build-pi -j"$(nproc)"
+```
+
+If the Broadcom userland is missing, configure **fails immediately** rather
+than producing undefined references at link time:
+
+```
+CMake Error: ENABLE_DISPMANX=ON but the Broadcom userland was not found.
+    bcm_host.h : BCM_HOST_INCLUDE_DIR-NOTFOUND
+    libbcm_host: BCM_HOST_LIBRARY-NOTFOUND
+```
+
+##### Run
+
+DispmanX composites a fullscreen layer and needs no display server, so run it
+from a console with no X or Wayland session:
+
+```bash
+./build-pi/refapp --frames 300
+```
+
+Expect a solid blue screen. The program prints the backend it chose, the
+surface size and the GL strings:
+
+```
+compiled backends: dispmanx
+backend    : dispmanx
+surface    : 1920x1080
+GL_VERSION : OpenGL ES 2.0
+```
+
+Backend selection is automatic (FR-7) — DispmanX is chosen when neither
+`WAYLAND_DISPLAY` nor `DISPLAY` is set, which is exactly the console case. To
+force it:
+
+```bash
+./build-pi/refapp --backend dispmanx --frames 300
+```
+
+#### 5b. Cross-compiling for the Raspberry Pi
+
+Building on the device is the reference path (§5a), but slow to iterate on and
+impossible without hardware. The cross image compiles the DispmanX backend on
+an x86-64 machine.
+
+**What it proves, and what it does not.** It proves the backend **compiles and
+links** against the real Broadcom headers and libraries — worth having, because
+nothing else in CI touches that code at all. It proves nothing **runs**: the
+binary is armhf, it is never executed here, and a DispmanX surface exists only
+on the device. Acceptance criterion 1 of story S-02 still needs a Pi.
+
+##### Build the cross image
+
+```bash
+docker build -f docker/rpi-cross.Dockerfile -t opengl-refapp-rpi docker/
+```
+
+It installs `crossbuild-essential-armhf` and fetches the Broadcom userland from
+the Raspberry Pi firmware repository — a shallow, blobless, sparse checkout of
+`hardfp/opt/vc` alone, since a full clone is gigabytes of firmware blobs and
+kernel images. Target is 32-bit armhf: the legacy graphics stack that provides
+DispmanX is a 32-bit userland.
+
+##### Cross-compile
+
+```bash
+docker/build-rpi.sh
+```
+
+Which is the toolchain file plus `ENABLE_DISPMANX=ON`:
+
+```bash
+cmake -S . -B build-rpi -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain-rpi-armhf.cmake -DENABLE_DISPMANX=ON
+```
+
+The toolchain file sets `CMAKE_FIND_ROOT_PATH_MODE_LIBRARY ONLY`, so a stray
+x86-64 library cannot be picked up — without it the failure surfaces at link
+time as an architecture mismatch, which is a poor way to learn that `find_library`
+looked in the wrong place.
+
+##### Copying to the device
+
+```bash
+scp build-rpi/refapp pi@raspberrypi.local:
+```
+
+The Broadcom libraries are already on the device, in `/opt/vc/lib`. If the
+loader cannot find them:
+
+```bash
+export LD_LIBRARY_PATH=/opt/vc/lib
+```
+
 #### 6. Python module resolution
 
 `PythonInterpreter` prepends its `module_search_paths` to `sys.path`, so

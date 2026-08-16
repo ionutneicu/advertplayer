@@ -15,3 +15,7 @@ __pycache__/
 
 # Machine-local agent settings; .claude/settings.json is shared, this one is not
 .claude/settings.local.json
+
+# Cross-compilation output
+build-rpi/
+build-pi/
