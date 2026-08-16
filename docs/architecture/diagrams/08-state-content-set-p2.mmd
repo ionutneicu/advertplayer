@@ -1,0 +1,19 @@
+stateDiagram-v2
+    [*] --> Downloading : announced by server
+    Downloading --> Staged : complete + validated (FR-73)
+    Downloading --> [*] : download failed, discard
+
+    Staged --> Active : activation (FR-83, FR-86)
+    Active --> Superseded : newer set activated
+    Superseded --> Retired : last running scene torn down
+    Staged --> Retired : expired before activating
+
+    Retired --> [*] : media reference count reaches zero (FR-76)
+
+    note right of Staged
+        pinned — never collected
+    end note
+    note right of Superseded
+        still pinned: a running scene
+        may still be reading it
+    end note

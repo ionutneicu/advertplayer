@@ -1,0 +1,21 @@
+stateDiagram-v2
+    [*] --> Loading
+    Loading --> Starting : config parsed, media resolved
+    Loading --> Failed : scene file bad / media missing (FR-75)
+
+    Starting --> Playing : all instances created
+    Starting --> Failed : an instance failed create (FR-58)
+
+    Playing --> Ending : duration elapsed
+    Playing --> Ending : all instances finished
+    Playing --> Ending : any instance finished
+    Playing --> Ending : activation cut (stage 3)
+    Playing --> Failed : instance error or budget overrun
+
+    Failed --> Ending : log, move on (FR-59)
+    Ending --> [*] : instances destroyed, GL objects freed
+
+    note right of Playing
+        end condition chosen per scene:
+        duration / all / any / never (FR-17)
+    end note

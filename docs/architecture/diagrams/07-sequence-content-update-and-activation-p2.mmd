@@ -1,0 +1,30 @@
+sequenceDiagram
+    autonumber
+    participant SRV as Server
+    participant SY as Sync service
+    participant ST as Staging
+    participant P as Scene player
+
+    SRV->>SY: content set v18, activation = T
+    SY->>SY: resolve transitive media set
+    SY->>SY: diff against storage (FR-69)
+    SY->>ST: download only the difference
+
+    Note over ST: incomplete — invisible<br/>to the player (FR-82)
+
+    ST-->>SY: complete + validated
+    SY->>SY: mark staged (pinned, FR-84)
+
+    alt scheduled (stage 2)
+        Note over P: v17 keeps playing
+        P->>P: current scene ends naturally
+        SY->>P: activate v18 at scene boundary (FR-86)
+        Note over P: no glitch
+    else immediate (stage 3)
+        SY->>P: activate v18 now
+        P->>P: cut current scene
+        Note over P: brief glitch, accepted (FR-74)
+    end
+
+    P->>P: destroy instances, restart on v18
+    SY->>SY: v17 superseded — retire once unreferenced (FR-76, FR-77)

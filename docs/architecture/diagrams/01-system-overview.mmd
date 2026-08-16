@@ -1,0 +1,48 @@
+flowchart TB
+    subgraph ext["External — [P2] / [L]"]
+        SRV["Content server"]
+        SYNC["Sync service<br/><i>FR-31</i>"]
+    end
+
+    subgraph store["Local content store"]
+        SCN["scenes/<br/>scene list + scene files"]
+        PLG["plugins/<br/>image.so, clock.so"]
+        STO["storage/<br/>flat media blobs<br/><i>FR-61</i>"]
+    end
+
+    subgraph app["Application"]
+        CSRC["Content source<br/><i>FR-60, risk R-11</i>"]
+        PLAY["Scene player<br/><i>FR-16..FR-20</i>"]
+        LOAD["Plugin loader<br/>dlopen + magic check<br/><i>FR-25, FR-33</i>"]
+        RES["Resource manager<br/>textures, shaders, residency<br/><i>FR-46..FR-52</i>"]
+        REND["Renderer — GLES2<br/><i>FR-10..FR-15</i>"]
+        SURF["Surface layer — EGL<br/><i>FR-5..FR-7</i>"]
+    end
+
+    subgraph plugins["Plugins — outside the application"]
+        PI["Plugin instances<br/><i>refapp_plugin</i>"]
+        LPD["libplugin_dev<br/>static, optional<br/><i>FR-88..FR-91</i>"]
+    end
+
+    X11["X11"]
+    WL["Wayland"]
+
+    SRV --> SYNC
+    SYNC --> SCN
+    SYNC --> PLG
+    SYNC --> STO
+
+    SCN --> CSRC
+    STO --> CSRC
+    CSRC --> PLAY
+    PLG --> LOAD
+    PLAY --> LOAD
+    LOAD --> PI
+    PLAY <-->|"create / frame / destroy"| PI
+    LPD -.->|"linked into"| PI
+    PLAY --> RES
+    PLAY --> REND
+    RES --> REND
+    REND --> SURF
+    SURF --> X11
+    SURF --> WL

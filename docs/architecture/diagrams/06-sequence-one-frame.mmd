@@ -1,0 +1,33 @@
+sequenceDiagram
+    autonumber
+    participant P as Scene player
+    participant PI as Plugin instances
+    participant RM as Resource manager
+    participant R as Renderer
+
+    R->>R: begin frame, clear
+
+    loop each instance, list order (bottom to top)
+        P->>PI: frame(instance, frame_time_ms of NEXT frame)
+        activate PI
+        Note over PI: must return within<br/>frame budget (FR-36, NFR-2)
+        PI-->>P: draw_items, ops, finished
+        deactivate PI
+
+        alt overran budget
+            P->>P: log, skip this instance
+        end
+
+        P->>RM: apply ops — LOAD by at_ms,<br/>KEEP until at_ms, DROP from at_ms
+    end
+
+    RM->>RM: drain LOAD queue by deadline,<br/>within remaining budget (FR-48)
+    RM->>RM: measure actual load times
+    RM-->>PI: update_stats(revised table)
+    P->>R: submit draw items, in plugin order
+    R->>R: blend GL_ONE, GL_ONE_MINUS_SRC_ALPHA (FR-15)
+    R->>R: swap buffers, vsync
+
+    alt all / any instance finished
+        P->>P: end scene (FR-17)
+    end

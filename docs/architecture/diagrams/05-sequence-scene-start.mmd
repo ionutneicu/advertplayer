@@ -1,0 +1,29 @@
+sequenceDiagram
+    autonumber
+    participant CS as Content source
+    participant P as Scene player
+    participant L as Plugin loader
+    participant PI as Plugin instance
+
+    P->>CS: resolve scene "midnight"
+    CS-->>P: end condition, ordered plugin list
+    CS-->>P: resolved media table (name -> path)
+
+    loop each plugin entry, in declared order
+        P->>L: load type "image"
+        L->>L: dlopen plugins/image.so
+        L->>L: dlsym "refapp_plugin_entry"
+        L->>L: verify magic + abi_version
+        alt rejected
+            L-->>P: error
+            P->>P: log, skip to next scene (FR-58, FR-59)
+        else accepted
+            L-->>P: const refapp_plugin *
+            Note over P: schema in refapp_plugin.params<br/>is static: no instance needed
+            P->>PI: create(instance_name, args, media, load stats)
+            Note over PI: synchronous — fully<br/>initialised on return
+            PI-->>P: void *instance
+        end
+    end
+
+    P->>P: scene_time_ms = 0, enter frame loop
