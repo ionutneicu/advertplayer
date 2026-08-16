@@ -1,0 +1,17 @@
+# Build output
+build/
+build-docker/
+cmake-build-*/
+compile_commands.json
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+
+# Editor / tooling
+.cache/
+.vscode/
+.idea/
+
+# Machine-local agent settings; .claude/settings.json is shared, this one is not
+.claude/settings.local.json

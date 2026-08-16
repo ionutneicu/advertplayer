@@ -1,0 +1,24 @@
+stateDiagram-v2
+    [*] --> Created : create(info, &instance)
+    Created --> Active : first frame() call
+    Created --> [*] : create returned REFAPP_ERROR
+
+    Active --> Active : frame() — REFAPP_OK
+    Active --> Active : update_stats()
+    Active --> Idle : frame() with empty draw set
+    Idle --> Idle : update_stats()
+    Idle --> Active : frame() with draw items
+
+    Active --> Finished : out.finished = true
+    Idle --> Finished : out.finished = true
+
+    Active --> Faulted : REFAPP_ERROR or budget overrun
+    Idle --> Faulted : REFAPP_ERROR or budget overrun
+
+    Finished --> [*] : destroy(instance)
+    Faulted --> [*] : destroy(instance)
+
+    note right of Idle
+        not visible, but may still
+        upload and release (FR-19)
+    end note

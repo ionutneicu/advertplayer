@@ -1,0 +1,21 @@
+stateDiagram-v2
+    [*] --> Queued : LOAD op, deadline at_ms
+    Queued --> Resident : uploaded to GPU
+    Queued --> Queued : deferred — deadline not near
+
+    Resident --> Queued : LOAD on a live id (replace contents)
+    Resident --> Resident : KEEP — pinned until at_ms
+    Resident --> Released : DROP from at_ms
+    Resident --> Released : owning instance destroyed
+
+    Queued --> Released : owning instance destroyed
+    Released --> [*]
+
+    note right of Queued
+        deadline missed?
+        skip the draw item, log once (OP-9)
+    end note
+    note right of Resident
+        no KEEP and no DROP: eligible
+        for eviction under pressure (FR-53)
+    end note

@@ -1,0 +1,25 @@
+flowchart LR
+    subgraph appside["Application"]
+        A["Plugin loader<br/>+ scene player"]
+    end
+
+    subgraph native["Native plugin"]
+        NC["C or C++ logic"]
+    end
+
+    subgraph py["Python plugin"]
+        PC["C shim<br/><i>embeds CPython</i>"]
+        PD["libplugin_dev<br/><i>pixel conversion, FR-91</i>"]
+        PY["Python logic<br/><i>Cairo clock, FR-66</i>"]
+    end
+
+    A -->|"refapp_plugin ABI"| NC
+    A -->|"refapp_plugin ABI"| PC
+    PC <-->|"marshalling"| PY
+    PC --- PD
+    PY -.->|"pixels via Cairo"| PC
+
+    note1["FR-90: per-pixel work never crosses<br/>into the interpreted layer"]
+    PD -.- note1
+
+    style note1 fill:transparent,stroke-dasharray: 3 3

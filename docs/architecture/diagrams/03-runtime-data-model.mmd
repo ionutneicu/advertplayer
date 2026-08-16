@@ -1,0 +1,31 @@
+erDiagram
+    CONTENT_SET ||--|| SCENE_LIST : "declares"
+    CONTENT_SET ||--o{ MEDIA : "declares"
+    SCENE_LIST  ||--o{ SCENE : "ordered play order"
+    SCENE       ||--o{ PLUGIN_INSTANCE : "ordered — bottom to top"
+    PLUGIN_INSTANCE }o--|| PLUGIN_TYPE : "resolves to plugins/TYPE.so"
+    PLUGIN_INSTANCE ||--o{ ARGUMENT : "opaque to the application"
+    ARGUMENT    }o--o| MEDIA : "references by logical name"
+
+    CONTENT_SET {
+        string version "immutable, FR-80"
+        string activation "timestamp or immediate"
+        string expires "optional"
+    }
+    SCENE {
+        string name
+        string end_condition "duration all any never"
+    }
+    PLUGIN_INSTANCE {
+        string instance_name
+        string type
+    }
+    ARGUMENT {
+        string key
+        string value "always a string, api 6.3"
+    }
+    MEDIA {
+        string logical_name
+        string content_address "FR-85"
+        int size
+    }

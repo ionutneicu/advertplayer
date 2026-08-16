@@ -1,0 +1,21 @@
+flowchart TB
+    APP["Application render loop"]
+    GLES["OpenGL ES 2.0<br/><i>FR-10</i>"]
+    EGL["EGL<br/><i>FR-5 — never GLX</i>"]
+    BX["X11 backend<br/><i>ENABLE_X11</i>"]
+    BW["Wayland backend<br/><i>ENABLE_WAYLAND</i>"]
+    MESA["Mesa — radeonsi / iris / v3d"]
+    VEND["Vendor driver — NVIDIA<br/><i>DOC-1</i>"]
+    WEB["WebGL<br/><i>[L] — FR-3</i>"]
+
+    APP --> GLES
+    GLES --> EGL
+    EGL --> BX
+    EGL --> BW
+    BX --> MESA
+    BW --> MESA
+    BX --> VEND
+    BW --> VEND
+    GLES -.->|"future target"| WEB
+
+    style WEB stroke-dasharray: 4 4
